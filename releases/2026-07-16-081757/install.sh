@@ -11,7 +11,7 @@ echo
 # ---------------------------------------------------------------------------
 # Bootstrap: if run via curl | bash, download the full release package first
 # ---------------------------------------------------------------------------
-RELEASE_BASE_URL="https://raw.githubusercontent.com/theiconic/claude-code-with-amazon-bedrock/refs/heads/beta-ti/assets/releases/2026-07-14-123155"
+RELEASE_BASE_URL="https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/releases/2026-07-16-081757"
 if [ ! -f "config.json" ] && [ -n "$RELEASE_BASE_URL" ]; then
     echo "Downloading release package..."
     TMP_DIR=$(mktemp -d)
