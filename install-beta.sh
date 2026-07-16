@@ -61,7 +61,7 @@ else
 fi
 echo
 
-# Step 3: Download and run the release install.sh
+# Step 3: Download release package with progress
 echo "Downloading installer from release $RELEASE..."
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -83,14 +83,19 @@ if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
     FILES="config.json claude-settings/settings.json credential-process-windows.exe otel-helper-windows.exe quota-poller-windows.exe"
 fi
 
+TOTAL=$(echo "$FILES" | wc -w | tr -d ' ')
+COUNT=0
 for f in $FILES; do
+    COUNT=$((COUNT + 1))
     dest="$TMP_DIR/$f"
     mkdir -p "$(dirname "$dest")"
-    curl -fsSLk "$RELEASE_BASE_URL/$f" -o "$dest" 2>/dev/null || true
+    printf "  [%d/%d] %s\n" "$COUNT" "$TOTAL" "$f"
+    curl -fsSL --progress-bar "$RELEASE_BASE_URL/$f" -o "$dest" 2>&1 || true
 done
 
-# Download and run install.sh from the same release
-curl -fsSLk "$RELEASE_BASE_URL/install.sh" -o "$TMP_DIR/install.sh"
+# Download install.sh from the same release
+printf "  [install.sh]\n"
+curl -fsSL --progress-bar "$RELEASE_BASE_URL/install.sh" -o "$TMP_DIR/install.sh" 2>&1
 chmod +x "$TMP_DIR/install.sh"
 echo "OK Package downloaded"
 echo
@@ -98,7 +103,7 @@ echo
 cd "$TMP_DIR"
 ./install.sh
 
-# Step 4: Test credential-process
+# Step 4: Test authentication
 echo
 echo "======================================"
 echo "Testing authentication..."
@@ -110,3 +115,16 @@ else
     echo "WARN Authentication test failed. Output:"
     echo "$TEST_OUTPUT"
 fi
+
+# Step 5: Print installed binary versions
+echo
+echo "======================================"
+echo "Installed versions"
+echo "======================================"
+echo "  quota-poller      : $("$HOME/claude-code-with-bedrock/quota-poller" --version 2>&1)"
+echo "  credential-process: $("$HOME/claude-code-with-bedrock/credential-process" --version 2>&1)"
+echo "  otel-helper       : $("$HOME/claude-code-with-bedrock/otel-helper" --version 2>&1 || echo 'n/a')"
+echo
+echo "======================================"
+echo "Installation complete!"
+echo "======================================"
