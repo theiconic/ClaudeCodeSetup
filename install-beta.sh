@@ -62,11 +62,11 @@ fi
 echo
 
 # Step 3: Download release package with progress
+# Use /dev/tty for progress output so it works when run via curl|bash
 echo "Downloading installer from release $RELEASE..."
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-# Detect platform to only download relevant binaries
 if [[ "$OSTYPE" == "darwin"* ]]; then
     PLATFORMS="macos-arm64 macos-intel"
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -89,13 +89,12 @@ for f in $FILES; do
     COUNT=$((COUNT + 1))
     dest="$TMP_DIR/$f"
     mkdir -p "$(dirname "$dest")"
-    printf "  [%d/%d] %s\n" "$COUNT" "$TOTAL" "$f"
-    curl -fsSL --progress-bar "$RELEASE_BASE_URL/$f" -o "$dest" 2>&1 || true
+    printf "  [%d/%d] %-45s" "$COUNT" "$TOTAL" "$f" >/dev/tty
+    curl -fLk# "$RELEASE_BASE_URL/$f" -o "$dest" 2>/dev/tty || true
 done
 
-# Download install.sh from the same release
-printf "  [install.sh]\n"
-curl -fsSL --progress-bar "$RELEASE_BASE_URL/install.sh" -o "$TMP_DIR/install.sh" 2>&1
+printf "  [%d/%d] %-45s" "$((TOTAL+1))" "$((TOTAL+1))" "install.sh" >/dev/tty
+curl -fLk# "$RELEASE_BASE_URL/install.sh" -o "$TMP_DIR/install.sh" 2>/dev/tty
 chmod +x "$TMP_DIR/install.sh"
 echo "OK Package downloaded"
 echo
@@ -121,9 +120,9 @@ echo
 echo "======================================"
 echo "Installed versions"
 echo "======================================"
-echo "  quota-poller      : $("$HOME/claude-code-with-bedrock/quota-poller" --version 2>&1)"
-echo "  credential-process: $("$HOME/claude-code-with-bedrock/credential-process" --version 2>&1)"
-echo "  otel-helper       : $("$HOME/claude-code-with-bedrock/otel-helper" --version 2>&1 || echo 'n/a')"
+printf "  %-20s %s\n" "quota-poller:"       "$("$HOME/claude-code-with-bedrock/quota-poller" --version 2>&1)"
+printf "  %-20s %s\n" "credential-process:" "$("$HOME/claude-code-with-bedrock/credential-process" --version 2>&1)"
+printf "  %-20s %s\n" "otel-helper:"        "$("$HOME/claude-code-with-bedrock/otel-helper" --version 2>&1 || echo 'n/a')"
 echo
 echo "======================================"
 echo "Installation complete!"
