@@ -1,0 +1,23 @@
+{
+  "env": {
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "AWS_REGION": "ap-southeast-2",
+    "AWS_PROFILE": "theiconic-claude-primary",
+    "AWS_CREDENTIAL_PROCESS": "__CREDENTIAL_PROCESS_PATH__ --profile theiconic-claude-primary",
+    "ANTHROPIC_MODEL": "global.anthropic.claude-sonnet-5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "global.anthropic.claude-sonnet-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "global.anthropic.claude-opus-4-8",
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_METRICS_EXPORTER": "otlp",
+    "OTEL_LOGS_EXPORTER": "otlp",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://otel-collector-alb-1417639215.ap-southeast-2.elb.amazonaws.com",
+    "OTEL_RESOURCE_ATTRIBUTES": "department=engineering,team.id=default,cost_center=default,organization=default,project=default"
+  },
+  "includeCoAuthoredBy": false,
+  "awsAuthRefresh": "__CREDENTIAL_PROCESS_PATH__ --profile theiconic-claude-primary",
+  "otelHeadersHelper": "__OTEL_HELPER_PATH__",
+  "statusLine": "__STATUSLINE_PATH__"
+}
