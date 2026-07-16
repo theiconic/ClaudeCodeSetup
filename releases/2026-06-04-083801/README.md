@@ -1,152 +1,38 @@
-# Claude Code Authentication Setup
+# Claude Code with Amazon Bedrock — Release 2026-06-04-083801
 
-## Quick Start
+## Install
 
-### macOS/Linux
-
-1. Extract the package:
-   ```bash
-   unzip claude-code-package-*.zip
-   cd claude-code-package
-   ```
-
-2. Run the installer:
-   ```bash
-   chmod +x install.sh && ./install.sh
-   ```
-
-3. Use the AWS profile:
-   ```bash
-   export AWS_PROFILE=ClaudeCode
-   aws sts get-caller-identity
-   ```
-
-### Windows
-
-#### Step 1: Download the Package
-```powershell
-# Use the Invoke-WebRequest command provided by your IT administrator
-Invoke-WebRequest -Uri "URL_PROVIDED" -OutFile "claude-code-package.zip"
-```
-
-#### Step 2: Extract the Package
-
-**Option A: Using Windows Explorer**
-1. Right-click on `claude-code-package.zip`
-2. Select "Extract All..."
-3. Choose a destination folder
-4. Click "Extract"
-
-**Option B: Using PowerShell**
-```powershell
-# Extract to current directory
-Expand-Archive -Path "claude-code-package.zip" -DestinationPath "claude-code-package"
-
-# Navigate to the extracted folder
-cd claude-code-package
-```
-
-**Option C: Using Command Prompt**
-```cmd
-# If you have tar available (Windows 10 1803+)
-tar -xf claude-code-package.zip
-
-# Or use PowerShell from Command Prompt
-powershell -command "Expand-Archive -Path 'claude-code-package.zip' -DestinationPath 'claude-code-package'"
-
-cd claude-code-package
-```
-
-#### Step 3: Run the Installer
-```cmd
-install.bat
-```
-
-The installer will:
-- Check for AWS CLI installation
-- Copy authentication tools to `%USERPROFILE%\claude-code-with-bedrock`
-- Configure the AWS profile "ClaudeCode"
-- Test the authentication
-
-#### Step 4: Use Claude Code
-```cmd
-# Set the AWS profile
-set AWS_PROFILE=ClaudeCode
-
-# Verify authentication works
-aws sts get-caller-identity
-
-# Your browser will open automatically for authentication if needed
-```
-
-For PowerShell users:
-```powershell
-$env:AWS_PROFILE = "ClaudeCode"
-aws sts get-caller-identity
-```
-
-## What This Does
-
-- Installs the Claude Code authentication tools
-- Configures your AWS CLI to use theiconic.okta.com for authentication
-- Sets up automatic credential refresh via your browser
-
-## Requirements
-
-- Python 3.8 or later
-- AWS CLI v2
-- pip3
-
-## Troubleshooting
-
-### macOS Keychain Access Popup
-On first use, macOS will ask for permission to access the keychain. This is normal and required for secure credential storage. Click "Always Allow" to avoid repeated prompts.
-
-### Authentication Issues
-If you encounter issues with authentication:
-- Ensure you're assigned to the Claude Code application in your identity provider
-- Check that port 8400 is available for the callback
-- Contact your IT administrator for help
-
-### Authentication Behavior
-
-The system handles authentication automatically:
-- Your browser will open when authentication is needed
-- Credentials are cached securely to avoid repeated logins
-- Bad credentials are automatically cleared and re-authenticated
-
-To manually clear cached credentials (if needed):
 ```bash
-~/claude-code-with-bedrock/credential-process --clear-cache
+curl -fsSLk https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/install-beta.sh | bash
 ```
 
-This will force re-authentication on your next AWS command.
+## Changelog
 
-### Browser doesn't open
-Check that you're not in an SSH session. The browser needs to open on your local machine.
+### 2026-06-02
+- feat: quota-poller --show-usage prints cached daily/monthly quota to the terminal
+  with a colour progress bar and your email address.
+- feat: quota-poller --statusline outputs quota as JSON for status displays.
+- fix: --statusline unit scaling was wrong when used < limit crossed M/k boundary.
 
-## Support
+### 2026-05-27
+- fix: OAuth callback no longer falls back to a random port when port 8400 is busy.
+- fix: daily quota enforcement now works.
+- feat: quota-poller auto-refreshes expired monitoring tokens via credential-process.
+- feat: --version now includes the build timestamp.
+- feat: --changelog flag shows what changed in the installed build.
 
-Contact your IT administrator for help.
+---
 
-Configuration Details:
-- Organization: theiconic.okta.com
-- Region: ap-southeast-2
-- Package Version: 2026-06-04-083801
+## Binaries
 
-## Analytics Dashboard
-
-Your organization has enabled advanced analytics for Claude Code usage. You can access detailed metrics and reports through AWS Athena.
-
-To view analytics:
-1. Open the AWS Console in region ap-southeast-2
-2. Navigate to Athena
-3. Select the analytics workgroup and database
-4. Run pre-built queries or create custom reports
-
-Available metrics include:
-- Token usage by user
-- Cost allocation
-- Model usage patterns
-- Activity trends
-
+| File | Platform |
+|------|----------|
+| `credential-process-macos-arm64` | macOS Apple Silicon |
+| `credential-process-macos-intel` | macOS Intel |
+| `credential-process-windows.exe` | Windows |
+| `quota-poller-macos-arm64` | macOS Apple Silicon |
+| `quota-poller-macos-intel` | macOS Intel |
+| `quota-poller-windows.exe` | Windows |
+| `otel-helper-macos-arm64` | macOS Apple Silicon |
+| `otel-helper-macos-intel` | macOS Intel |
+| `otel-helper-windows.exe` | Windows |
