@@ -1,10 +1,10 @@
 #!/bin/bash
-# Claude Code Authentication - Bootstrap Installer
-# Usage: curl -fsSLk https://raw.githubusercontent.com/theiconic/claude-code-with-amazon-bedrock/main/scripts/install/claude-code-install-beta.sh | bash
+# Claude Code Authentication - Beta Installer
+# Usage: curl -fsSLk https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/install-beta.sh | bash
 
 set -e
 
-GITHUB_BASE="https://raw.githubusercontent.com/theiconic/claude-code-with-amazon-bedrock/refs/heads/beta-ti/assets/releases"
+GITHUB_BASE="https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/releases"
 LATEST_JSON_URL="$GITHUB_BASE/latest.json"
 
 echo "======================================"
@@ -79,7 +79,6 @@ FILES="config.json claude-settings/settings.json claude-settings/statusline.sh"
 for plat in $PLATFORMS; do
     FILES="$FILES credential-process-$plat otel-helper-$plat quota-poller-$plat"
 done
-# Windows uses .exe suffix
 if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
     FILES="config.json claude-settings/settings.json credential-process-windows.exe otel-helper-windows.exe quota-poller-windows.exe"
 fi
