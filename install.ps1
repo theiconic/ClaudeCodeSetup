@@ -1,85 +1,186 @@
-# Claude Code Windows Installer
-# Usage (PowerShell, run as normal user):
-#   irm https://raw.githubusercontent.com/theiconic/claude-code-with-amazon-bedrock/main/scripts/install/claude-code-install.ps1 | iex
+# Claude Code Authentication - Windows Installer
+# Usage (PowerShell):
+#   irm https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/install.ps1 | iex
+#
+# Windows counterpart of install-beta.sh: resolves the latest release from
+# latest.json, downloads the Windows binaries + package files, and runs the
+# per-release ccwb-install.ps1.
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 
-# ── helpers ────────────────────────────────────────────────────────────────────
-function Write-Step { param([string]$msg) Write-Host "`n==> $msg" -ForegroundColor Cyan }
-function Write-Ok   { param([string]$msg) Write-Host "    OK  $msg" -ForegroundColor Green }
-function Write-Fail { param([string]$msg) Write-Host "    ERR $msg" -ForegroundColor Red; exit 1 }
+$GithubBase   = 'https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/releases'
+$LatestJsonUrl = "$GithubBase/latest.json"
 
-# ── config ─────────────────────────────────────────────────────────────────────
-$PackageUrl  = "https://claude-code-auth-distribution-417652811636.s3.amazonaws.com/packages/20260527-083348/claude-code-package-20260527-083348.zip"
-$ZipName     = "claude-code-package-20260527-083348.zip"
-$ExtractDir  = "claude-code-package"
-$TempDir     = Join-Path $env:TEMP "claude-code-install-$([System.IO.Path]::GetRandomFileName())"
+function Write-Ok   { param([string]$m) Write-Host "OK $m"   -ForegroundColor Green }
+function Write-Warn { param([string]$m) Write-Host "WARN $m" -ForegroundColor Yellow }
+function Write-Err  { param([string]$m) Write-Host "ERROR $m" -ForegroundColor Red }
 
-# ── main ───────────────────────────────────────────────────────────────────────
+Write-Host '======================================'
+Write-Host 'Claude Code Authentication Installer'
+Write-Host '======================================'
+Write-Host ''
+
+# ---------------------------------------------------------------------------
+# Step 1: Resolve latest release
+# ---------------------------------------------------------------------------
+Write-Host 'Checking latest release...'
 try {
-    Write-Host ""
-    Write-Host "  Claude Code Installer for Windows" -ForegroundColor Yellow
-    Write-Host "  ===================================" -ForegroundColor Yellow
+    $latest  = Invoke-RestMethod -Uri $LatestJsonUrl -UseBasicParsing
+    $release = $latest.release
+    $version = $latest.version
+} catch {
+    Write-Err "Could not resolve latest release from $LatestJsonUrl : $_"
+    exit 1
+}
 
-    # Step 1 — Download
-    Write-Step "Step 1 — Downloading package..."
-    New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
-    $ZipPath = Join-Path $TempDir $ZipName
+if (-not $release) {
+    Write-Err "Could not resolve latest release from $LatestJsonUrl"
+    exit 1
+}
 
+Write-Host "Release : $release"
+Write-Host "Version : $version"
+Write-Host ''
+
+$ReleaseBaseUrl = "$GithubBase/$release"
+
+# ---------------------------------------------------------------------------
+# Step 2: Install Claude Code CLI if missing
+# ---------------------------------------------------------------------------
+if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+    Write-Host 'Claude Code CLI not found. Installing...'
+    $installed = $false
     try {
-        Invoke-WebRequest -Uri $PackageUrl -OutFile $ZipPath -UseBasicParsing
-        Write-Ok "Downloaded to $ZipPath"
+        irm https://claude.ai/install.ps1 | iex
+        if (Get-Command claude -ErrorAction SilentlyContinue) { $installed = $true }
     } catch {
-        Write-Fail "Download failed: $_"
+        Write-Warn "Official installer failed: $_"
     }
 
-    # Step 2 — Extract
-    Write-Step "Step 2 — Extracting package..."
-    $ExtractPath = Join-Path $TempDir $ExtractDir
-    Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath -Force
-    Write-Ok "Extracted to $ExtractPath"
-
-    # Step 3 — Install
-    Write-Step "Step 3 — Running installer..."
-
-    # Find install.bat (handles nested zip structures)
-    $InstallBat = Get-ChildItem -Path $ExtractPath -Filter "install.bat" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $InstallBat) {
-        Write-Fail "install.bat not found in extracted package."
-    }
-
-    Push-Location $InstallBat.DirectoryName
-    try {
-        cmd /c "install.bat"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Fail "install.bat exited with code $LASTEXITCODE"
+    if (-not $installed) {
+        if (Get-Command npm -ErrorAction SilentlyContinue) {
+            Write-Host 'Trying npm...'
+            npm install -g @anthropic-ai/claude-code
+        } else {
+            Write-Err 'Could not install Claude Code automatically. Install it manually from https://claude.ai/download and re-run this installer.'
+            exit 1
         }
-        Write-Ok "Installer completed successfully"
-    } finally {
-        Pop-Location
     }
 
-    # Step 4 — Done
-    Write-Host ""
-    Write-Host "  Installation complete!" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "  To start Claude Code, open a new terminal and run:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host '      $env:AWS_PROFILE = "theiconic-claude-primary"' -ForegroundColor White
-    Write-Host "      claude" -ForegroundColor White
-    Write-Host ""
-    Write-Host "  Or in Command Prompt:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host '      set AWS_PROFILE=theiconic-claude-primary' -ForegroundColor White
-    Write-Host "      claude" -ForegroundColor White
-    Write-Host ""
-    Write-Host "  On first run, your browser will open and prompt you to log in with Okta." -ForegroundColor Yellow
-    Write-Host ""
+    if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+        Write-Err 'Claude Code installation failed. Install it manually from https://claude.ai/download and re-run this installer.'
+        exit 1
+    }
+    Write-Ok "Claude Code installed: $(claude --version)"
+} else {
+    Write-Ok "Claude Code found: $(claude --version)"
+}
+Write-Host ''
 
-} finally {
-    # Cleanup temp dir
-    if (Test-Path $TempDir) {
-        Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue
+# ---------------------------------------------------------------------------
+# Step 3: Download release package (Windows binaries only)
+# ---------------------------------------------------------------------------
+Write-Host "Downloading installer from release $release..."
+$TempDir = Join-Path $env:TEMP "claude-code-install-$([System.IO.Path]::GetRandomFileName())"
+New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+
+$files = @(
+    'config.json',
+    'claude-settings/settings.json',
+    'claude-settings/statusline.ps1',
+    'credential-process-windows.exe',
+    'otel-helper-windows.exe',
+    'quota-poller-windows.exe',
+    'ccwb-install.ps1'
+)
+
+$total = $files.Count
+$count = 0
+foreach ($f in $files) {
+    $count++
+    $dest = Join-Path $TempDir ($f -replace '/', '\')
+    $destDir = Split-Path -Parent $dest
+    if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
+    Write-Host ("  [{0}/{1}] {2}" -f $count, $total, $f)
+    try {
+        Invoke-WebRequest -Uri "$ReleaseBaseUrl/$f" -OutFile $dest -UseBasicParsing
+    } catch {
+        # settings.json / otel-helper are optional; ccwb-install.ps1 tolerates
+        # their absence. credential-process + config.json are validated by the
+        # per-release installer, so a missing required file fails loudly there.
+        Write-Warn "Could not download $f : $_"
     }
 }
+Write-Ok 'Package downloaded'
+Write-Host ''
+
+# ---------------------------------------------------------------------------
+# Step 4: Run the per-release installer
+# ---------------------------------------------------------------------------
+$installer = Join-Path $TempDir 'ccwb-install.ps1'
+if (-not (Test-Path $installer)) {
+    Write-Err "ccwb-install.ps1 not found in release $release"
+    exit 1
+}
+
+try {
+    Push-Location $TempDir
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $installer
+    $installerExit = $LASTEXITCODE
+} finally {
+    Pop-Location
+}
+
+if ($installerExit -ne 0) {
+    Write-Err "Installer exited with code $installerExit"
+    exit $installerExit
+}
+
+# ---------------------------------------------------------------------------
+# Step 5: Test authentication
+# ---------------------------------------------------------------------------
+Write-Host ''
+Write-Host '======================================'
+Write-Host 'Testing authentication...'
+Write-Host '======================================'
+$credExe = Join-Path $env:USERPROFILE 'claude-code-with-bedrock\credential-process.exe'
+if (Test-Path $credExe) {
+    $testOutput = & $credExe --profile theiconic-claude-primary 2>&1 | Out-String
+    if ($testOutput -match '"Version"' -and $testOutput -match '"AccessKeyId"') {
+        Write-Ok 'Authentication working - credentials obtained successfully'
+    } else {
+        Write-Warn 'Authentication test failed. Output:'
+        Write-Host $testOutput
+    }
+} else {
+    Write-Warn "credential-process.exe not found at $credExe"
+}
+
+# ---------------------------------------------------------------------------
+# Step 6: Print installed binary versions
+# ---------------------------------------------------------------------------
+$installDir = Join-Path $env:USERPROFILE 'claude-code-with-bedrock'
+Write-Host ''
+Write-Host '======================================'
+Write-Host 'Installed versions'
+Write-Host '======================================'
+foreach ($bin in @('quota-poller', 'credential-process', 'otel-helper')) {
+    $exe = Join-Path $installDir "$bin.exe"
+    if (Test-Path $exe) {
+        $v = & $exe --version 2>&1 | Out-String
+        Write-Host ("  {0,-20} {1}" -f "${bin}:", $v.Trim())
+    } else {
+        Write-Host ("  {0,-20} n/a" -f "${bin}:")
+    }
+}
+
+# Cleanup temp dir
+if (Test-Path $TempDir) {
+    Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+Write-Host ''
+Write-Host '======================================'
+Write-Host 'Installation complete!'
+Write-Host '======================================'

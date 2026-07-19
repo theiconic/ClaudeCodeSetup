@@ -57,6 +57,13 @@ if (Test-Path 'otel-helper-windows.exe') {
     Copy-Item -Force 'otel-helper-windows.exe' (Join-Path $installDir 'otel-helper.exe')
 }
 
+# Copy quota poller if it exists (drives the statusline quota + cost display,
+# triggered in the background by statusline.ps1 when the cache is stale).
+if (Test-Path 'quota-poller-windows.exe') {
+    Write-Host 'Copying quota poller...'
+    Copy-Item -Force 'quota-poller-windows.exe' (Join-Path $installDir 'quota-poller.exe')
+}
+
 # Remove Mark-of-the-Web so Windows doesn't block execution.
 # Binaries downloaded via browser/S3 carry a Zone.Identifier ADS that
 # triggers SmartScreen on first run. Unblock-File strips it silently.
@@ -71,7 +78,8 @@ Get-ChildItem -Path $installDir -Filter '*.exe' | ForEach-Object {
 # so subsequent subprocess calls from AWS CLI / Claude Code succeed.
 Write-Host 'Warming Defender cache...'
 & (Join-Path $installDir 'credential-process.exe') --version 2>$null | Out-Null
-& (Join-Path $installDir 'otel-helper.exe') --version 2>$null | Out-Null
+if (Test-Path (Join-Path $installDir 'otel-helper.exe'))   { & (Join-Path $installDir 'otel-helper.exe') --version 2>$null | Out-Null }
+if (Test-Path (Join-Path $installDir 'quota-poller.exe'))  { & (Join-Path $installDir 'quota-poller.exe') --version 2>$null | Out-Null }
 
 # Copy configuration
 Write-Host 'Copying configuration...'
@@ -100,19 +108,55 @@ if (Test-Path 'claude-settings/settings.json') {
     }
 
     if ($doWrite) {
+        # Install the PowerShell statusline script (Windows equivalent of
+        # statusline.sh — shows context/model/quota/cost). Ask before clobbering
+        # an existing one, mirroring the bash installer.
+        $statuslineTarget = Join-Path $claudeDir 'statusline.ps1'
+        $haveStatusline = Test-Path 'claude-settings/statusline.ps1'
+        if ($haveStatusline) {
+            $writeStatusline = $true
+            if (Test-Path $statuslineTarget) {
+                $ans = Read-Host 'A statusline.ps1 already exists. Override with the quota-aware statusline? (y/N)'
+                if (-not ($ans -eq 'y' -or $ans -eq 'Y')) {
+                    $writeStatusline = $false
+                    Write-Host 'Keeping your existing statusline.ps1.'
+                }
+            }
+            if ($writeStatusline) {
+                Copy-Item -Force 'claude-settings/statusline.ps1' $statuslineTarget
+                Write-Host "OK Statusline script installed: $statuslineTarget"
+            }
+        }
+
+        # Build the paths that replace the settings.json placeholders. Use
+        # forward slashes so the values are valid inside JSON string literals
+        # (backslashes would need escaping and break naive readers).
         $otelPath = ((Join-Path $installDir 'otel-helper.exe') -replace '\\', '/')
         $credPath = ((Join-Path $installDir 'credential-process.exe') -replace '\\', '/')
-        $settings = Get-Content 'claude-settings/settings.json' -Raw | ConvertFrom-Json
-        if ($settings.otelHeadersHelper) {
-            $settings.otelHeadersHelper = "`"$otelPath`""
-        }
-        if ($settings.awsAuthRefresh) {
-            $settings.awsAuthRefresh = $settings.awsAuthRefresh -replace '__CREDENTIAL_PROCESS_PATH__', "`"$credPath`""
-        }
-        $settings | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8 $settingsTarget
+        $statuslinePath = ($statuslineTarget -replace '\\', '/')
+
+        # statusLine must be an OBJECT ({type,command}), and on native Windows
+        # Claude Code may launch the command via cmd.exe — a bare .ps1 path is
+        # not executable there — so wrap it in an explicit powershell invocation.
+        # Inner quotes around the path handle spaces. Build the JSON fragment
+        # with ConvertTo-Json so all escaping (quotes, backslashes) is correct;
+        # hand-rolling the string produced invalid JSON.
+        $statuslineCmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File "' + $statuslinePath + '"'
+        $statuslineObj = ([pscustomobject]@{ type = 'command'; command = $statuslineCmd } | ConvertTo-Json -Compress)
+
+        # Do raw-text replacement of ALL placeholders (like the bash installer's
+        # global sed). ConvertFrom-Json only touched two top-level keys and left
+        # env.AWS_CREDENTIAL_PROCESS's __CREDENTIAL_PROCESS_PATH__ unresolved.
+        $raw = Get-Content 'claude-settings/settings.json' -Raw
+        $raw = $raw.Replace('__OTEL_HELPER_PATH__', $otelPath)
+        $raw = $raw.Replace('__CREDENTIAL_PROCESS_PATH__', $credPath)
+        # statusLine placeholder is a quoted string in the template
+        # ("__STATUSLINE_PATH__"); swap the whole quoted token for the object.
+        $raw = $raw.Replace('"__STATUSLINE_PATH__"', $statuslineObj)
+        [System.IO.File]::WriteAllText($settingsTarget, $raw)
 
         $settingsContent = Get-Content $settingsTarget -Raw
-        if ($settingsContent -match '__CREDENTIAL_PROCESS_PATH__|__OTEL_HELPER_PATH__') {
+        if ($settingsContent -match '__CREDENTIAL_PROCESS_PATH__|__OTEL_HELPER_PATH__|__STATUSLINE_PATH__') {
             Write-Host 'WARNING: Some path placeholders were not replaced in settings.json'
             Write-Host "         You may need to edit the file manually: $settingsTarget"
         } else {
