@@ -207,6 +207,14 @@ main() {
         quota_cache="$HOME/.claude-code-session/${active_profile}-quota-cache.json"
     fi
 
+    # Cost display is opt-in via config.json ("statusline_cost_enable": true).
+    # Default off: when absent or false we skip both the CloudWatch refresh and
+    # the 💰 line, so cost never appears and we never hit CloudWatch unasked.
+    local cost_enabled="false"
+    if [ -f "$install_config" ] && grep -q '"statusline_cost_enable"[[:space:]]*:[[:space:]]*true' "$install_config"; then
+        cost_enabled="true"
+    fi
+
     # Refresh quota cache in background if stale (>5 min) and poller binary exists
     local poller="$HOME/claude-code-with-bedrock/quota-poller"
     if [ -x "$poller" ] && [ -n "$quota_cache" ]; then
@@ -224,7 +232,7 @@ main() {
     # Refresh cost cache in background every 15 min (--include-cost hits CloudWatch)
     local cost_cache="$HOME/.claude-code-session/${active_profile}-cost-cache.json"
     local cost_cache_ttl=900  # 15 minutes
-    if [ -x "$poller" ] && [ -n "$active_profile" ]; then
+    if [ "$cost_enabled" = "true" ] && [ -x "$poller" ] && [ -n "$active_profile" ]; then
         local cost_age=999999
         if [ -f "$cost_cache" ]; then
             local cost_time
@@ -269,8 +277,9 @@ main() {
         line2+=" ${DM}|${D} 📈 D: ${d_color}${daily_pct}%${D} $d_bar ${DM}${d_tok_fmt}/${d_lim_fmt}${D}"
         line2+="  ${DM}|${D}  M: ${m_color}${monthly_pct}%${D} $m_bar ${DM}${m_tok_fmt}/${m_lim_fmt}${D}"
 
-        # Cost from cached --include-cost output (refreshed every 15 min)
-        if [ -f "$cost_cache" ]; then
+        # Cost from cached --include-cost output (refreshed every 15 min).
+        # Only shown when opt-in via config.json "statusline_cost_enable": true.
+        if [ "$cost_enabled" = "true" ] && [ -f "$cost_cache" ]; then
             local today_usd month_usd
             today_usd=$(grep -o '"today_usd"[[:space:]]*:[[:space:]]*"[^"]*"' "$cost_cache" | sed 's/.*:.*"\([^"]*\)"/\1/' | head -1)
             month_usd=$(grep -o '"month_usd"[[:space:]]*:[[:space:]]*"[^"]*"' "$cost_cache" | sed 's/.*:.*"\([^"]*\)"/\1/' | head -1)

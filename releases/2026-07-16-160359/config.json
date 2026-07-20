@@ -12,6 +12,7 @@
     "selected_model": "global.anthropic.claude-sonnet-4-6",
     "quota_api_endpoint": "https://0nj8jp3vx1.execute-api.ap-southeast-2.amazonaws.com",
     "quota_fail_mode": "open",
-    "quota_check_interval": 30
+    "quota_check_interval": 30,
+    "statusline_cost_enable": false
   }
 }

@@ -198,10 +198,17 @@ if ([long]$durationMs -gt 0) {
 # ---------------------------------------------------------------------------
 $installConfig = Join-Path $env:USERPROFILE 'claude-code-with-bedrock\config.json'
 $activeProfile = ''
+$costEnabled = $false
 if (Test-Path $installConfig) {
     try {
         $cfg = Get-Content $installConfig -Raw | ConvertFrom-Json
         $activeProfile = ($cfg.PSObject.Properties.Name | Select-Object -First 1)
+        # Cost display is opt-in via "statusline_cost_enable": true in the
+        # active profile. Default off: skip both the CloudWatch refresh and the
+        # money line so cost never appears (and we never hit CloudWatch unasked).
+        if ($activeProfile -and $cfg.$activeProfile.statusline_cost_enable -eq $true) {
+            $costEnabled = $true
+        }
     } catch {}
 }
 
@@ -219,8 +226,8 @@ if ((Test-Path $poller) -and $activeProfile) {
     }
 }
 
-# Refresh cost cache in background every 15 min
-if ((Test-Path $poller) -and $activeProfile) {
+# Refresh cost cache in background every 15 min (only when cost is enabled)
+if ($costEnabled -and (Test-Path $poller) -and $activeProfile) {
     $age = 999999
     if (Test-Path $costCache) { $age = ((Get-Date) - (Get-Item $costCache).LastWriteTime).TotalSeconds }
     if ($age -gt 900) {
@@ -232,7 +239,7 @@ if ((Test-Path $poller) -and $activeProfile) {
     }
 }
 # Promote a completed cost tmp file (written by a prior background run)
-if ($costCache -and (Test-Path "$costCache.tmp")) {
+if ($costEnabled -and $costCache -and (Test-Path "$costCache.tmp")) {
     try {
         $t = Get-Content "$costCache.tmp" -Raw | ConvertFrom-Json  # validate JSON
         if ($t) { Move-Item -Force "$costCache.tmp" $costCache }
@@ -263,8 +270,8 @@ if ($quotaCache -and (Test-Path $quotaCache)) {
         $line2 += " ${DM}|${D} " + $EM_TREND + " D: ${dColor}${dPctStr}%${D} $dBar ${DM}${dTok}/${dLim}${D}"
         $line2 += "  ${DM}|${D}  M: ${mColor}${mPctStr}%${D} $mBar ${DM}${mTok}/${mLim}${D}"
 
-        # Cost from cached --include-cost output
-        if ($costCache -and (Test-Path $costCache)) {
+        # Cost from cached --include-cost output (opt-in via statusline_cost_enable)
+        if ($costEnabled -and $costCache -and (Test-Path $costCache)) {
             try { $cc = Get-Content $costCache -Raw | ConvertFrom-Json } catch { $cc = $null }
             $today = Get-Prop $cc @('cost','today_usd')
             $month = Get-Prop $cc @('cost','month_usd')
