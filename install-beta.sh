@@ -1,10 +1,10 @@
 #!/bin/bash
 # Claude Code Authentication - Beta Installer
-# Usage: curl -fsSLk https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/install-beta.sh | bash
+# Usage: curl -fsSLk https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/beta/install-beta.sh | bash
 
 set -e
 
-GITHUB_BASE="https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/releases"
+GITHUB_BASE="https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/beta/releases"
 LATEST_JSON_URL="$GITHUB_BASE/latest.json"
 
 echo "======================================"
@@ -115,7 +115,28 @@ else
     echo "$TEST_OUTPUT"
 fi
 
-# Step 5: Print installed binary versions
+# Step 5: Test quota-poller --models --statusline
+echo
+echo "======================================"
+echo "Testing quota-poller per-model query..."
+echo "======================================"
+if [ -x "$HOME/claude-code-with-bedrock/quota-poller" ]; then
+    MODELS_OUTPUT=$("$HOME/claude-code-with-bedrock/quota-poller" --models --statusline 2>/dev/null || true)
+    if echo "$MODELS_OUTPUT" | grep -q '"models"'; then
+        if echo "$MODELS_OUTPUT" | grep -q '"model_warning"'; then
+            echo "WARN Per-model query: fallback mode (theiconic-claude-primary profile not yet configured)"
+            echo "     CodexBar will still show quota totals once you have authenticated."
+        else
+            echo "OK Per-model query working — CodexBar will show full model breakdown"
+        fi
+    else
+        echo "WARN quota-poller --models --statusline produced unexpected output"
+    fi
+else
+    echo "WARN quota-poller not found at ~/claude-code-with-bedrock/quota-poller"
+fi
+
+# Step 6: Print installed binary versions
 echo
 echo "======================================"
 echo "Installed versions"
