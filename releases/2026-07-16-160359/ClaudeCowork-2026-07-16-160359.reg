@@ -1,0 +1,15 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Claude]
+"inferenceProvider"="bedrock"
+"inferenceBedrockRegion"="ap-southeast-2"
+"inferenceBedrockProfile"="theiconic-claude-primary"
+"inferenceModels"="[\"global.anthropic.claude-opus-5-5\", \"global.anthropic.claude-sonnet-5-5\", \"global.anthropic.claude-haiku-5-5\"]"
+"isClaudeCodeForDesktopEnabled"="false"
+"isDesktopExtensionEnabled"="true"
+"isDesktopExtensionDirectoryEnabled"="true"
+"isDesktopExtensionSignatureRequired"="true"
+"isLocalDevMcpEnabled"="true"
+"inferenceBedrockAwsDir"="C:\\ProgramData\\ccwb\\aws"
+"otlpEndpoint"="http://otel-collector-alb-1417639215.ap-southeast-2.elb.amazonaws.com"
+"otlpProtocol"="http/protobuf"
