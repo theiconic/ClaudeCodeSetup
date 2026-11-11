@@ -1,186 +1,215 @@
+#requires -Version 5.1
 # Claude Code Authentication - Windows Installer
-# Usage (PowerShell):
-#   irm https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/install.ps1 | iex
-#
-# Windows counterpart of install-beta.sh: resolves the latest release from
-# latest.json, downloads the Windows binaries + package files, and runs the
-# per-release ccwb-install.ps1.
+# Usage: irm https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/install.ps1 | iex
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$GithubBase   = 'https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/releases'
+$GithubBase = 'https://raw.githubusercontent.com/theiconic/ClaudeCodeSetup/main/releases'
 $LatestJsonUrl = "$GithubBase/latest.json"
 
-function Write-Ok   { param([string]$m) Write-Host "OK $m"   -ForegroundColor Green }
-function Write-Warn { param([string]$m) Write-Host "WARN $m" -ForegroundColor Yellow }
-function Write-Err  { param([string]$m) Write-Host "ERROR $m" -ForegroundColor Red }
+function Write-Ok { param([string]$Message) Write-Host "OK $Message" -ForegroundColor Green }
+function Write-Warn { param([string]$Message) Write-Host "WARN $Message" -ForegroundColor Yellow }
 
-Write-Host '======================================'
-Write-Host 'Claude Code Authentication Installer'
-Write-Host '======================================'
-Write-Host ''
-
-# ---------------------------------------------------------------------------
-# Step 1: Resolve latest release
-# ---------------------------------------------------------------------------
-Write-Host 'Checking latest release...'
-try {
-    $latest  = Invoke-RestMethod -Uri $LatestJsonUrl -UseBasicParsing
-    $release = $latest.release
-    $version = $latest.version
-} catch {
-    Write-Err "Could not resolve latest release from $LatestJsonUrl : $_"
-    exit 1
-}
-
-if (-not $release) {
-    Write-Err "Could not resolve latest release from $LatestJsonUrl"
-    exit 1
-}
-
-Write-Host "Release : $release"
-Write-Host "Version : $version"
-Write-Host ''
-
-$ReleaseBaseUrl = "$GithubBase/$release"
-
-# ---------------------------------------------------------------------------
-# Step 2: Install Claude Code CLI if missing
-# ---------------------------------------------------------------------------
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
-    Write-Host 'Claude Code CLI not found. Installing...'
-    $installed = $false
-    try {
-        irm https://claude.ai/install.ps1 | iex
-        if (Get-Command claude -ErrorAction SilentlyContinue) { $installed = $true }
-    } catch {
-        Write-Warn "Official installer failed: $_"
+function Update-SessionPath {
+    $paths = @(
+        $env:PATH
+        [Environment]::GetEnvironmentVariable('Path', 'Machine')
+        [Environment]::GetEnvironmentVariable('Path', 'User')
+        (Join-Path $env:USERPROFILE '.local\bin')
+    )
+    if ($env:APPDATA) {
+        $paths += Join-Path $env:APPDATA 'npm'
     }
+    $env:PATH = ($paths | Where-Object { $_ }) -join ';'
+}
 
-    if (-not $installed) {
-        if (Get-Command npm -ErrorAction SilentlyContinue) {
+function Invoke-NativeCommand {
+    param(
+        [string]$Command,
+        [string[]]$Arguments
+    )
+
+    # Windows PowerShell can turn native stderr into terminating errors.
+    # Capture it, then use the process exit code to determine success.
+    $ErrorActionPreference = 'Continue'
+    $global:LASTEXITCODE = 1
+    $output = & $Command @Arguments 2>&1 | Out-String
+    $exitCode = $global:LASTEXITCODE
+    [pscustomobject]@{
+        Output = $output.Trim()
+        ExitCode = $exitCode
+    }
+}
+
+if ($env:OS -ne 'Windows_NT') {
+    throw 'This installer requires Windows. Use install-beta.sh on macOS or Linux.'
+}
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+$PowerShellExe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+$TempDir = Join-Path ([IO.Path]::GetTempPath()) "claude-code-install-$([guid]::NewGuid().ToString('N'))"
+New-Item -ItemType Directory -Path $TempDir | Out-Null
+
+try {
+    Write-Host '======================================'
+    Write-Host 'Claude Code Authentication Installer'
+    Write-Host '======================================'
+    Write-Host ''
+
+    Write-Host 'Checking latest release...'
+    $latest = Invoke-RestMethod -Uri $LatestJsonUrl -UseBasicParsing
+    $release = [string]$latest.release
+    $version = [string]$latest.version
+    if ($release -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$' -or [string]::IsNullOrWhiteSpace($version)) {
+        throw "Invalid release metadata from $LatestJsonUrl"
+    }
+    Write-Host "Release : $release"
+    Write-Host "Version : $version"
+    Write-Host ''
+    $ReleaseBaseUrl = "$GithubBase/$release"
+
+    Update-SessionPath
+    if (-not (Get-Command claude -CommandType Application -ErrorAction SilentlyContinue)) {
+        Write-Host 'Claude Code CLI not found. Installing...'
+        try {
+            $claudeInstaller = Join-Path $TempDir 'claude-install.ps1'
+            Invoke-WebRequest -Uri 'https://claude.ai/install.ps1' -OutFile $claudeInstaller -UseBasicParsing
+            # Isolate installer exit calls from the user's PowerShell session.
+            $result = Invoke-NativeCommand -Command $PowerShellExe -Arguments @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $claudeInstaller
+            )
+            if ($result.Output) { Write-Host $result.Output }
+            if ($result.ExitCode -ne 0) {
+                Write-Warn "Official installer exited with code $($result.ExitCode)."
+            }
+        } catch {
+            Write-Warn "Official installer failed: $($_.Exception.Message)"
+        }
+
+        Update-SessionPath
+        if (-not (Get-Command claude -CommandType Application -ErrorAction SilentlyContinue)) {
+            $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
+            if (-not $npm) {
+                throw 'Could not install Claude Code automatically. Install it from https://claude.ai/download and re-run this installer.'
+            }
             Write-Host 'Trying npm...'
-            npm install -g @anthropic-ai/claude-code
-        } else {
-            Write-Err 'Could not install Claude Code automatically. Install it manually from https://claude.ai/download and re-run this installer.'
-            exit 1
+            $result = Invoke-NativeCommand -Command $npm.Source -Arguments @('install', '-g', '@anthropic-ai/claude-code')
+            if ($result.Output) { Write-Host $result.Output }
+            if ($result.ExitCode -ne 0) {
+                throw "npm installation failed with exit code $($result.ExitCode)."
+            }
+            Update-SessionPath
         }
     }
 
-    if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
-        Write-Err 'Claude Code installation failed. Install it manually from https://claude.ai/download and re-run this installer.'
-        exit 1
+    $claude = Get-Command claude -CommandType Application -ErrorAction SilentlyContinue
+    if (-not $claude) {
+        throw 'Claude Code is not available on PATH after installation. Install it manually and re-run this installer.'
     }
-    Write-Ok "Claude Code installed: $(claude --version)"
-} else {
-    Write-Ok "Claude Code found: $(claude --version)"
-}
-Write-Host ''
-
-# ---------------------------------------------------------------------------
-# Step 3: Download release package (Windows binaries only)
-# ---------------------------------------------------------------------------
-Write-Host "Downloading installer from release $release..."
-$TempDir = Join-Path $env:TEMP "claude-code-install-$([System.IO.Path]::GetRandomFileName())"
-New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
-
-$files = @(
-    'config.json',
-    'claude-settings/settings.json',
-    'claude-settings/statusline.ps1',
-    'credential-process-windows.exe',
-    'otel-helper-windows.exe',
-    'quota-poller-windows.exe',
-    'ccwb-install.ps1'
-)
-
-$total = $files.Count
-$count = 0
-foreach ($f in $files) {
-    $count++
-    $dest = Join-Path $TempDir ($f -replace '/', '\')
-    $destDir = Split-Path -Parent $dest
-    if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
-    Write-Host ("  [{0}/{1}] {2}" -f $count, $total, $f)
-    try {
-        Invoke-WebRequest -Uri "$ReleaseBaseUrl/$f" -OutFile $dest -UseBasicParsing
-    } catch {
-        # settings.json / otel-helper are optional; ccwb-install.ps1 tolerates
-        # their absence. credential-process + config.json are validated by the
-        # per-release installer, so a missing required file fails loudly there.
-        Write-Warn "Could not download $f : $_"
+    $result = Invoke-NativeCommand -Command $claude.Source -Arguments @('--version')
+    if ($result.ExitCode -ne 0) {
+        throw "Claude Code could not start (exit code $($result.ExitCode)): $($result.Output)"
     }
-}
-Write-Ok 'Package downloaded'
-Write-Host ''
+    Write-Ok "Claude Code found: $($result.Output)"
+    Write-Host ''
 
-# ---------------------------------------------------------------------------
-# Step 4: Run the per-release installer
-# ---------------------------------------------------------------------------
-$installer = Join-Path $TempDir 'ccwb-install.ps1'
-if (-not (Test-Path $installer)) {
-    Write-Err "ccwb-install.ps1 not found in release $release"
-    exit 1
-}
+    Write-Host "Downloading installer from release $release..."
+    $files = @(
+        'config.json'
+        'claude-settings/settings.json'
+        'claude-settings/statusline.ps1'
+        'credential-process-windows.exe'
+        'otel-helper-windows.exe'
+        'quota-poller-windows.exe'
+        'ccwb-install.ps1'
+    )
+    $count = 0
+    foreach ($file in $files) {
+        $count++
+        Write-Host ("  [{0}/{1}] {2}" -f $count, $files.Count, $file)
+        $destination = Join-Path $TempDir $file
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+        try {
+            Invoke-WebRequest -Uri "$ReleaseBaseUrl/$file" -OutFile $destination -UseBasicParsing
+        } catch {
+            throw "Could not download required release file '$file': $($_.Exception.Message)"
+        }
+        if ((Get-Item -LiteralPath $destination).Length -eq 0) {
+            throw "Downloaded release file '$file' is empty."
+        }
+    }
+    Write-Ok 'Package downloaded'
+    Write-Host ''
 
-try {
     Push-Location $TempDir
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $installer
-    $installerExit = $LASTEXITCODE
-} finally {
-    Pop-Location
-}
+    try {
+        & $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $TempDir 'ccwb-install.ps1')
+        $installerExit = $LASTEXITCODE
+        if ($installerExit -ne 0) {
+            throw "Release installer exited with code $installerExit."
+        }
+    } finally {
+        Pop-Location
+    }
 
-if ($installerExit -ne 0) {
-    Write-Err "Installer exited with code $installerExit"
-    exit $installerExit
-}
+    $installDir = Join-Path $env:USERPROFILE 'claude-code-with-bedrock'
+    $credExe = Join-Path $installDir 'credential-process.exe'
+    if (-not (Test-Path -LiteralPath $credExe -PathType Leaf)) {
+        throw "Release installer completed, but credential-process.exe was not found at $credExe."
+    }
 
-# ---------------------------------------------------------------------------
-# Step 5: Test authentication
-# ---------------------------------------------------------------------------
-Write-Host ''
-Write-Host '======================================'
-Write-Host 'Testing authentication...'
-Write-Host '======================================'
-$credExe = Join-Path $env:USERPROFILE 'claude-code-with-bedrock\credential-process.exe'
-if (Test-Path $credExe) {
-    $testOutput = & $credExe --profile theiconic-claude-primary 2>&1 | Out-String
-    if ($testOutput -match '"Version"' -and $testOutput -match '"AccessKeyId"') {
+    Write-Host ''
+    Write-Host '======================================'
+    Write-Host 'Testing authentication...'
+    Write-Host '======================================'
+    $result = Invoke-NativeCommand -Command $credExe -Arguments @('--profile', 'theiconic-claude-primary')
+    $authenticated = $false
+    if ($result.ExitCode -eq 0) {
+        try {
+            $credentials = $result.Output | ConvertFrom-Json
+            $authenticated = $credentials.Version -eq 1 -and -not [string]::IsNullOrWhiteSpace($credentials.AccessKeyId)
+        } catch {
+            Write-Warn 'Authentication returned an invalid credential response.'
+        }
+    }
+    if ($authenticated) {
         Write-Ok 'Authentication working - credentials obtained successfully'
     } else {
-        Write-Warn 'Authentication test failed. Output:'
-        Write-Host $testOutput
+        # Never echo credential-process output: it may contain AWS secrets.
+        Write-Warn "Authentication test failed (exit code $($result.ExitCode)). Check your sign-in and profile configuration."
     }
-} else {
-    Write-Warn "credential-process.exe not found at $credExe"
-}
 
-# ---------------------------------------------------------------------------
-# Step 6: Print installed binary versions
-# ---------------------------------------------------------------------------
-$installDir = Join-Path $env:USERPROFILE 'claude-code-with-bedrock'
-Write-Host ''
-Write-Host '======================================'
-Write-Host 'Installed versions'
-Write-Host '======================================'
-foreach ($bin in @('quota-poller', 'credential-process', 'otel-helper')) {
-    $exe = Join-Path $installDir "$bin.exe"
-    if (Test-Path $exe) {
-        $v = & $exe --version 2>&1 | Out-String
-        Write-Host ("  {0,-20} {1}" -f "${bin}:", $v.Trim())
+    Write-Host ''
+    Write-Host '======================================'
+    Write-Host 'Installed versions'
+    Write-Host '======================================'
+    foreach ($binary in @('quota-poller', 'credential-process', 'otel-helper')) {
+        $exe = Join-Path $installDir "$binary.exe"
+        if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
+            Write-Warn "$binary was not found at $exe."
+            continue
+        }
+        $result = Invoke-NativeCommand -Command $exe -Arguments @('--version')
+        if ($result.ExitCode -ne 0) {
+            Write-Warn "$binary --version failed (exit code $($result.ExitCode))."
+            continue
+        }
+        Write-Host ("  {0,-20} {1}" -f "${binary}:", $result.Output)
+    }
+
+    Write-Host ''
+    Write-Host '======================================'
+    if ($authenticated) {
+        Write-Host 'Installation complete!'
     } else {
-        Write-Host ("  {0,-20} n/a" -f "${bin}:")
+        Write-Warn 'Installation complete, but authentication needs attention.'
+    }
+    Write-Host '======================================'
+} finally {
+    try {
+        Remove-Item -LiteralPath $TempDir -Recurse -Force
+    } catch {
+        Write-Warn "Could not remove temporary directory '$TempDir': $($_.Exception.Message)"
     }
 }
-
-# Cleanup temp dir
-if (Test-Path $TempDir) {
-    Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue
-}
-
-Write-Host ''
-Write-Host '======================================'
-Write-Host 'Installation complete!'
-Write-Host '======================================'
