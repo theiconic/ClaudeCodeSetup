@@ -1,4 +1,4 @@
-# Claude Desktop on Amazon Bedrock: release 2026-11-18-123922
+# Claude Desktop on Amazon Bedrock: release 2026-11-18-154836
 
 > **Supersedes `2026-11-18-121641`**, which shipped without usage telemetry (OTLP) and before the Windows install/uninstall recovery fixes from review. Do not deploy the older folder.
 
@@ -7,12 +7,12 @@ Built from `3.0.0-beta.3-92-g5d33970-dirty` (the `-dirty` suffix means uncommitt
 
 | Path | What it is |
 |---|---|
-| `macos/ClaudeCodeSetup-2026-11-18-123922.pkg` | root-owned install of the credential helper under `/usr/local/libexec/ccwb` and of the `theiconic` plugin under `/Library/Application Support/Claude/org-plugins/` |
-| `macos/ClaudeCowork-2026-11-18-123922.mobileconfig` | Claude Desktop policy (Bedrock, models, Developer Mode off). Deploy as a Configuration Profile; macOS blocks silent installs from a package |
+| `macos/ClaudeCodeSetup-2026-11-18-154836.pkg` | root-owned install of the credential helper under `/usr/local/libexec/ccwb` and of the `theiconic` plugin under `/Library/Application Support/Claude/org-plugins/` |
+| `macos/ClaudeCowork-2026-11-18-154836.mobileconfig` | Claude Desktop policy (Bedrock, models, Developer Mode off). Deploy as a Configuration Profile; macOS blocks silent installs from a package |
 | `windows/install-cowork.ps1` | Intune platform script (SYSTEM, 64-bit PowerShell). Downloads the zip below, refuses any bytes whose SHA256 differs, installs helper + plugin, writes the HKLM policy |
-| `windows/ClaudeCowork-2026-11-18-123922-windows.zip` | helper + config + plugin, pinned by hash inside the install script |
+| `windows/ClaudeCowork-2026-11-18-154836-windows.zip` | helper + config + plugin, pinned by hash inside the install script |
 | `windows/uninstall-cowork.ps1` | removes exactly what the installer recorded (policy values, plugin folders it installed, helper) |
-| `windows/ClaudeCowork-2026-11-18-123922.reg` | the same HKLM policy for Group Policy / reference |
+| `windows/ClaudeCowork-2026-11-18-154836.reg` | the same HKLM policy for Group Policy / reference |
 | `org-plugins/theiconic/` | the plugin as plain files (also inside both packages) |
 | `SHA256SUMS` | checksums of every file here: `shasum -a 256 -c SHA256SUMS` |
 
