@@ -1,0 +1,13 @@
+9df208d63cf4e0c5a899e8f25422fcef60c9614fe4fb79449bab016bd378bfc7  ./README.md
+de51bb58b6a9c7258f505428dd463fff2e28991eb4926feb9ea8353443b0c992  ./config.json
+d1dffbb4f8a7f7d1648543af89a38f5ba6cf211152cc88795dfd9edad2330952  ./macos/ClaudeCodeSetup-2026-11-18-154836.pkg
+feb8be9418320e30e4ef00bc8f4c83d795fc7042e7db97887a5c6b014c93d306  ./macos/ClaudeCowork-2026-11-18-154836.mobileconfig
+685d7d9037f58168cbde11a2fdd6c50ff5cad769fdc44c110ffb4ee04882a36c  ./org-plugins/theiconic/.claude-plugin/plugin.json
+8fa6bfbf923002e6e2205e92f32e1af173cef12e85b98e6f2c5756b193486dc4  ./org-plugins/theiconic/.mcp.json
+bb889813dad1503f2ef1912e07d7c83946d8373a810e6ef60d4878927cdeb795  ./org-plugins/theiconic/skills/datadog-readonly-triage/SKILL.md
+8c2b5a06267d466e3eb7460faa3e8bf8a1b42e8f3f69f5eee37a2181e8e993fe  ./org-plugins/theiconic/version.json
+d50ad78e5bfe0959a6ae9ee3d11b5a2ae24789646307433840b83595ef2a4d85  ./version.json
+24675d283634f560e5ba988a94e62f141c968d984b4e31dbc6d6f709d8d74f8c  ./windows/ClaudeCowork-2026-11-18-154836-windows.zip
+c6a17b8e31e811014ffa1c7cd65ec427ef675cc4d53c89433ef368d5fe8c10d1  ./windows/ClaudeCowork-2026-11-18-154836.reg
+ca4e2b490b94d038bcc4715c916f21fca4a6b33eeec5bd3779ee50c9080e3b8b  ./windows/install-cowork.ps1
+f2c37c5cebf94863ce065f53b5ee2c6880db77a2a80314b81a72057bfa67f830  ./windows/uninstall-cowork.ps1
