@@ -41,6 +41,8 @@
 			<string>http://otel-collector-alb-1417639215.ap-southeast-2.elb.amazonaws.com</string>
 			<key>otlpProtocol</key>
 			<string>http/protobuf</string>
+			<key>managedMcpServers</key>
+			<string>[{&quot;name&quot;: &quot;GitHub&quot;, &quot;server&quot;: &quot;github&quot;, &quot;clientId&quot;: &quot;Ov23liISnrP3VTMVQJPi&quot;, &quot;readOnly&quot;: true}]</string>
 		</dict>
 	</array>
 	<key>PayloadDisplayName</key>
