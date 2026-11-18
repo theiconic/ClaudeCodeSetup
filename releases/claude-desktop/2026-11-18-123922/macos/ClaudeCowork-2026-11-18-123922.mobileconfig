@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadType</key>
+			<string>com.anthropic.claudefordesktop</string>
+			<key>PayloadUUID</key>
+			<string>BF283A11-3223-5DB3-A798-38365DDFBE16</string>
+			<key>PayloadIdentifier</key>
+			<string>com.anthropic.claudefordesktop.config</string>
+			<key>PayloadDisplayName</key>
+			<string>Claude Cowork - Bedrock Configuration</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>inferenceProvider</key>
+			<string>bedrock</string>
+			<key>inferenceBedrockRegion</key>
+			<string>ap-southeast-2</string>
+			<key>inferenceBedrockProfile</key>
+			<string>theiconic-claude-primary</string>
+			<key>inferenceModels</key>
+			<string>[&quot;global.anthropic.claude-opus-5-5&quot;, &quot;global.anthropic.claude-sonnet-5-5&quot;, &quot;global.anthropic.claude-haiku-5-5&quot;]</string>
+			<key>isClaudeCodeForDesktopEnabled</key>
+			<string>false</string>
+			<key>isDesktopExtensionEnabled</key>
+			<string>true</string>
+			<key>isDesktopExtensionDirectoryEnabled</key>
+			<string>true</string>
+			<key>isDesktopExtensionSignatureRequired</key>
+			<string>true</string>
+			<key>isLocalDevMcpEnabled</key>
+			<string>true</string>
+			<key>inferenceBedrockAwsDir</key>
+			<string>/usr/local/libexec/ccwb/aws</string>
+			<key>developerModeEnabled</key>
+			<string>false</string>
+			<key>otlpEndpoint</key>
+			<string>http://otel-collector-alb-1417639215.ap-southeast-2.elb.amazonaws.com</string>
+			<key>otlpProtocol</key>
+			<string>http/protobuf</string>
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>Claude Cowork with Amazon Bedrock</string>
+	<key>PayloadIdentifier</key>
+	<string>com.theiconic.claude-cowork-bedrock</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>978F3BB3-1617-5F6E-9BCB-781F9461DA12</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>
