@@ -1,0 +1,8 @@
+{
+  "name": "theiconic",
+  "version": "1.1.1",
+  "description": "The Iconic organization plugin: company connectors (Datadog, Atlassian, n8n) with per-user sign-in, plus read-only helper skills.",
+  "author": {
+    "name": "The Iconic Platforms team"
+  }
+}
